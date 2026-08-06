@@ -1,0 +1,26 @@
+# Supabase無料プランの自動停止(約1週間アクセスがないと停止)を防ぐため、
+# 定期的にアプリのAPIを叩いてデータベースにアクセスします。
+name: keep-alive
+
+on:
+  schedule:
+    # 毎週 月曜・木曜 の 00:00 UTC(日本時間 09:00)に実行
+    - cron: '0 0 * * 1,4'
+  workflow_dispatch: # 手動実行用のボタンも出す
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: アプリのAPIにアクセスしてDBを起こす
+        run: |
+          URL="https://shift-app-nine-mu.vercel.app/api/members"
+          echo "ping: $URL"
+          code=$(curl -s -o /tmp/out.txt -w "%{http_code}" --max-time 30 "$URL")
+          echo "HTTP $code"
+          cat /tmp/out.txt | head -c 300
+          echo
+          if [ "$code" != "200" ]; then
+            echo "::error::アクセスに失敗しました (HTTP $code)"
+            exit 1
+          fi
