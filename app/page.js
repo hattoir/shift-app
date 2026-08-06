@@ -1,22 +1,25 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { WD, monthStr, monthDays, dateStr } from '@/lib/calendar';
+import { getJson } from '@/lib/api';
 
 export default function Home() {
   const now = new Date();
   const [y, setY] = useState(now.getFullYear());
   const [m, setM] = useState(now.getMonth() + 1);
   const [shifts, setShifts] = useState([]);
+  const [err, setErr] = useState(null);
 
   useEffect(() => {
-    fetch('/api/shifts?month=' + monthStr(y, m)).then((r) => r.json()).then((d) => setShifts(Array.isArray(d) ? d : []));
+    getJson('/api/shifts?month=' + monthStr(y, m)).then(({ data, error }) => {
+      setErr(error); setShifts(Array.isArray(data) ? data : []);
+    });
   }, [y, m]);
 
   const move = (diff) => {
     const d = new Date(y, m - 1 + diff, 1);
     setY(d.getFullYear()); setM(d.getMonth() + 1);
   };
-
   const find = (date, slot) => shifts.find((s) => s.date === date && s.slot === slot);
 
   return (
@@ -27,6 +30,7 @@ export default function Home() {
         <span className="month-label">{y}年{m}月</span>
         <button onClick={() => move(1)}>翌月 →</button>
       </div>
+      {err && <div className="msg err">読み込みエラー: {err}</div>}
       <div className="legend">🌅 早番 / 🌙 遅番</div>
       <div className="cal">
         {WD.map((w) => <div key={w} className="cal-head">{w}</div>)}

@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { WD, monthStr, monthDays, dateStr } from '@/lib/calendar';
+import { getJson, postJson } from '@/lib/api';
 
 const CYCLE = { none: 'both', both: 'early', early: 'late', late: 'none' };
 const MARK = { none: '', both: '○', early: '早', late: '遅' };
@@ -11,20 +12,23 @@ export default function Availability() {
   const [m, setM] = useState(now.getMonth() + 1);
   const [members, setMembers] = useState([]);
   const [memberId, setMemberId] = useState('');
-  const [marks, setMarks] = useState({}); // { date: slot }
+  const [marks, setMarks] = useState({});
   const [msg, setMsg] = useState(null);
 
   useEffect(() => {
-    fetch('/api/members').then((r) => r.json()).then((d) => setMembers(Array.isArray(d) ? d : []));
+    getJson('/api/members').then(({ data, error }) => {
+      if (error) setMsg({ t: 'err', text: 'メンバー読み込みエラー: ' + error });
+      setMembers(Array.isArray(data) ? data : []);
+    });
   }, []);
 
   useEffect(() => {
     if (!memberId) { setMarks({}); return; }
-    fetch('/api/availability?month=' + monthStr(y, m) + '&member_id=' + memberId)
-      .then((r) => r.json())
-      .then((d) => {
+    getJson('/api/availability?month=' + monthStr(y, m) + '&member_id=' + memberId)
+      .then(({ data, error }) => {
+        if (error) { setMsg({ t: 'err', text: '読み込みエラー: ' + error }); return; }
         const o = {};
-        (Array.isArray(d) ? d : []).forEach((a) => { o[a.date] = a.slot; });
+        (Array.isArray(data) ? data : []).forEach((a) => { o[a.date] = a.slot; });
         setMarks(o);
       });
   }, [memberId, y, m]);
@@ -35,7 +39,7 @@ export default function Availability() {
   };
 
   const toggle = (date) => {
-    if (!memberId) return;
+    if (!memberId) { setMsg({ t: 'err', text: '先に名前を選んでください' }); return; }
     setMarks((prev) => {
       const next = { ...prev };
       const s = CYCLE[prev[date] || 'none'];
@@ -47,11 +51,10 @@ export default function Availability() {
   const save = async () => {
     setMsg(null);
     const entries = Object.entries(marks).map(([date, slot]) => ({ date, slot }));
-    const res = await fetch('/api/availability', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ member_id: memberId, month: monthStr(y, m), entries }),
+    const { error } = await postJson('/api/availability', {
+      member_id: memberId, month: monthStr(y, m), entries,
     });
-    setMsg(res.ok ? { t: 'ok', text: '保存しました!' } : { t: 'err', text: '保存に失敗しました' });
+    setMsg(error ? { t: 'err', text: '保存に失敗: ' + error } : { t: 'ok', text: '保存しました!' });
   };
 
   return (
@@ -65,6 +68,7 @@ export default function Availability() {
             {members.map((mb) => <option key={mb.id} value={mb.id}>{mb.name}</option>)}
           </select>
         </div>
+        {!members.length && <div className="legend">※ 名前が出ない場合は、管理者がまだメンバーを登録していません</div>}
         <div className="legend">日付をタップ: ○(どちらでも) → 早(早番のみ) → 遅(遅番のみ) → なし</div>
       </div>
       <div className="month-nav">

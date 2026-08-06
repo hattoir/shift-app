@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { WD, monthStr, monthDays, dateStr } from '@/lib/calendar';
+import { getJson, postJson } from '@/lib/api';
 
 export default function Admin() {
   const [authed, setAuthed] = useState(false);
@@ -9,13 +10,10 @@ export default function Admin() {
   const [tab, setTab] = useState('shift');
 
   const login = async (e) => {
-    e.preventDefault();
-    const res = await fetch('/api/admin/login', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password }),
-    });
-    if (res.ok) setAuthed(true);
-    else setMsg({ t: 'err', text: 'パスワードが違います' });
+    e.preventDefault(); setMsg(null);
+    const { error } = await postJson('/api/admin/login', { password });
+    if (error) setMsg({ t: 'err', text: error });
+    else setAuthed(true);
   };
 
   if (!authed) {
@@ -61,12 +59,18 @@ function ShiftEditor() {
 
   const load = () => {
     const mo = monthStr(y, m);
-    fetch('/api/shifts?month=' + mo).then((r) => r.json()).then((d) => setShifts(Array.isArray(d) ? d : []));
-    fetch('/api/availability?month=' + mo).then((r) => r.json()).then((d) => setAvail(Array.isArray(d) ? d : []));
+    getJson('/api/shifts?month=' + mo).then(({ data, error }) => {
+      if (error) setMsg({ t: 'err', text: 'シフト読み込みエラー: ' + error });
+      setShifts(Array.isArray(data) ? data : []);
+    });
+    getJson('/api/availability?month=' + mo).then(({ data }) => setAvail(Array.isArray(data) ? data : []));
   };
 
   useEffect(() => {
-    fetch('/api/members').then((r) => r.json()).then((d) => setMembers(Array.isArray(d) ? d : []));
+    getJson('/api/members').then(({ data, error }) => {
+      if (error) setMsg({ t: 'err', text: 'メンバー読み込みエラー: ' + error });
+      setMembers(Array.isArray(data) ? data : []);
+    });
   }, []);
   useEffect(load, [y, m]);
 
@@ -77,21 +81,15 @@ function ShiftEditor() {
 
   const autoAssign = async () => {
     setBusy(true); setMsg(null);
-    const res = await fetch('/api/admin/assign', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ month: monthStr(y, m) }),
-    });
-    const d = await res.json();
+    const { data, error } = await postJson('/api/admin/assign', { month: monthStr(y, m) });
     setBusy(false);
-    setMsg(res.ok ? { t: 'ok', text: d.assigned + '枠を自動割当しました' } : { t: 'err', text: d.error || '失敗しました' });
+    setMsg(error ? { t: 'err', text: '失敗: ' + error } : { t: 'ok', text: data.assigned + '枠を自動割当しました' });
     load();
   };
 
   const setShift = async (date, slot, member_id) => {
-    await fetch('/api/admin/shift', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ date, slot, member_id: member_id || null }),
-    });
+    const { error } = await postJson('/api/admin/shift', { date, slot, member_id: member_id || null });
+    if (error) setMsg({ t: 'err', text: '保存に失敗: ' + error });
     load();
   };
 
@@ -110,7 +108,7 @@ function ShiftEditor() {
         </button>
       </div>
       {msg && <div className={'msg ' + msg.t}>{msg.text}</div>}
-      <div className="legend">✓=その日入れる希望あり / 手動で選ぶと固定され、自動割当で上書きされません(空欄に戻すと解除)</div>
+      <div className="legend">✓=その日入れる希望あり / 手動で選ぶと固定🔒され、自動割当で上書きされません(空欄に戻すと解除)</div>
       <div className="cal">
         {WD.map((w) => <div key={w} className="cal-head">{w}</div>)}
         {monthDays(y, m).map((d, i) => {
@@ -144,25 +142,23 @@ function Members() {
   const [name, setName] = useState('');
   const [msg, setMsg] = useState(null);
 
-  const load = () => fetch('/api/members').then((r) => r.json()).then((d) => setMembers(Array.isArray(d) ? d : []));
+  const load = () => getJson('/api/members').then(({ data, error }) => {
+    if (error) setMsg({ t: 'err', text: '読み込みエラー: ' + error });
+    setMembers(Array.isArray(data) ? data : []);
+  });
   useEffect(() => { load(); }, []);
 
   const add = async (e) => {
     e.preventDefault(); setMsg(null);
-    const res = await fetch('/api/members', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name }),
-    });
-    if (res.ok) { setName(''); load(); }
-    else setMsg({ t: 'err', text: (await res.json()).error || '追加に失敗しました' });
+    const { error } = await postJson('/api/members', { name });
+    if (error) setMsg({ t: 'err', text: '追加に失敗: ' + error });
+    else { setName(''); setMsg({ t: 'ok', text: '追加しました' }); load(); }
   };
 
   const del = async (id, nm) => {
     if (!confirm(nm + ' を削除しますか?(希望日・シフトも消えます)')) return;
-    await fetch('/api/members', {
-      method: 'DELETE', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id }),
-    });
+    const { error } = await postJson('/api/members', { id }, 'DELETE');
+    if (error) setMsg({ t: 'err', text: '削除に失敗: ' + error });
     load();
   };
 
@@ -189,28 +185,28 @@ function Rules() {
   const [memberId, setMemberId] = useState('');
   const [weekday, setWeekday] = useState('1');
   const [slot, setSlot] = useState('both');
+  const [msg, setMsg] = useState(null);
 
-  const load = () => fetch('/api/rules').then((r) => r.json()).then((d) => setRules(Array.isArray(d) ? d : []));
+  const load = () => getJson('/api/rules').then(({ data, error }) => {
+    if (error) setMsg({ t: 'err', text: '読み込みエラー: ' + error });
+    setRules(Array.isArray(data) ? data : []);
+  });
   useEffect(() => {
     load();
-    fetch('/api/members').then((r) => r.json()).then((d) => setMembers(Array.isArray(d) ? d : []));
+    getJson('/api/members').then(({ data }) => setMembers(Array.isArray(data) ? data : []));
   }, []);
 
   const add = async (e) => {
-    e.preventDefault();
-    if (!memberId) return;
-    await fetch('/api/rules', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ member_id: memberId, weekday: Number(weekday), slot }),
-    });
+    e.preventDefault(); setMsg(null);
+    if (!memberId) { setMsg({ t: 'err', text: 'メンバーを選んでください' }); return; }
+    const { error } = await postJson('/api/rules', { member_id: memberId, weekday: Number(weekday), slot });
+    if (error) setMsg({ t: 'err', text: '追加に失敗: ' + error });
     load();
   };
 
   const del = async (id) => {
-    await fetch('/api/rules', {
-      method: 'DELETE', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id }),
-    });
+    const { error } = await postJson('/api/rules', { id }, 'DELETE');
+    if (error) setMsg({ t: 'err', text: '削除に失敗: ' + error });
     load();
   };
 
@@ -235,6 +231,7 @@ function Rules() {
         </select>
         <button className="primary" type="submit">追加</button>
       </form>
+      {msg && <div className={'msg ' + msg.t}>{msg.text}</div>}
       <ul className="plain">
         {rules.map((r) => (
           <li key={r.id}>
