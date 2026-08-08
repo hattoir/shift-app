@@ -1,6 +1,11 @@
 'use client';
 import { useCallback, useEffect, useState } from 'react';
-import { WD, monthStr, monthDays, dateStr, dateLabel, weekdayOf } from '@/lib/calendar';
+import { WD, monthStr, monthDays, dateStr, dateLabel, weekdayOf, todayStr } from '@/lib/calendar';
+import {
+  SlotIcon, SLOT_NAME, IconSun, IconMoon, IconCheck, IconX, IconLock, IconUnlock,
+  IconRefresh, IconSparkle, IconClose, IconChevronRight, IconChevronDown,
+  IconArrowLeft, IconArrowRight, IconTrash,
+} from '@/lib/icons';
 import { getJson, postJson } from '@/lib/api';
 
 export default function Admin() {
@@ -99,7 +104,7 @@ function ShiftEditor() {
   const autoAssign = async () => {
     const ok = confirm(
       label + 'のシフトを自動割当します。\n' +
-      '手動で固定した枠(🔒)以外は上書きされます。よろしいですか?'
+      '手動で固定した枠(カギのマークが付いた枠)以外は上書きされます。よろしいですか?'
     );
     if (!ok) return;
 
@@ -124,18 +129,19 @@ function ShiftEditor() {
   };
 
   const find = (date, slot) => shifts.find((s) => s.date === date && s.slot === slot);
+  const today = todayStr();
 
   return (
     <div>
       <div className="month-nav">
-        <button onClick={() => move(-1)}>← 前月</button>
+        <button onClick={() => move(-1)}><IconArrowLeft />前月</button>
         <span className="month-label">{label}</span>
-        <button onClick={() => move(1)}>翌月 →</button>
-        <button onClick={load} disabled={loading}>{loading ? '更新中...' : '🔄 更新'}</button>
+        <button onClick={() => move(1)}>翌月<IconArrowRight /></button>
+        <button onClick={load} disabled={loading}><IconRefresh />{loading ? '更新中...' : '更新'}</button>
       </div>
       <div className="row">
         <button className="primary" onClick={autoAssign} disabled={busy}>
-          {busy ? '割当中...' : '🪄 ' + label + 'を自動割当'}
+          <IconSparkle size={17} />{busy ? '割当中...' : label + 'を自動割当'}
         </button>
       </div>
 
@@ -144,7 +150,8 @@ function ShiftEditor() {
       {report && (
         <div className="card">
           <button className="link-btn" onClick={() => setShowReport(!showReport)}>
-            {showReport ? '▼' : '▶'} 自動割当のくわしい結果を見る
+            {showReport ? <IconChevronDown size={13} /> : <IconChevronRight size={13} />}
+            自動割当のくわしい結果を見る
           </button>
           {showReport && (
             <div style={{ marginTop: 10 }}>
@@ -173,8 +180,9 @@ function ShiftEditor() {
         </div>
       )}
 
-      <div className="legend">
-        日付をタップすると、その日の担当を変更できます。🔒は手動で固定した枠(自動割当で上書きされません)。
+      <div className="legend legend-ic">
+        日付をタップすると、その日の担当を変更できます。<IconLock size={13} />は手動で固定した枠
+        (自動割当で上書きされません)。
         {updatedAt && ' 最終更新 ' + updatedAt.toLocaleTimeString('ja-JP')}
       </div>
 
@@ -188,13 +196,16 @@ function ShiftEditor() {
           return (
             <div key={date} onClick={() => setEditDate(date)} role="button" tabIndex={0}
               onKeyDown={(ev) => { if (ev.key === 'Enter') setEditDate(date); }}
-              className={'cell tap-cell' + (wd === 0 ? ' sun' : wd === 6 ? ' sat' : '')}>
+              className={'cell tap-cell' + (wd === 0 ? ' sun' : wd === 6 ? ' sat' : '')
+                + (date === today ? ' today' : '')}>
               <div className="d">{d}</div>
               <span className={'slot early' + (e?.members?.name ? '' : ' none')}>
-                🌅 {e?.members?.name || '未定'}{e?.locked ? ' 🔒' : ''}
+                <IconSun size={11} /><span className="nm">{e?.members?.name || '未定'}</span>
+                {e?.locked && <IconLock size={10} className="lk" />}
               </span>
               <span className={'slot late' + (l?.members?.name ? '' : ' none')}>
-                🌙 {l?.members?.name || '未定'}{l?.locked ? ' 🔒' : ''}
+                <IconMoon size={11} /><span className="nm">{l?.members?.name || '未定'}</span>
+                {l?.locked && <IconLock size={10} className="lk" />}
               </span>
             </div>
           );
@@ -220,7 +231,7 @@ function ShiftEditor() {
 /* 1日分の編集ダイアログ                                                */
 /* ------------------------------------------------------------------ */
 
-const SLOT_TITLE = { early: '🌅 早番', late: '🌙 遅番' };
+/* 見出しは <SlotIcon> + SLOT_NAME で組み立てます(lib/icons.js) */
 
 function DayEditor({ date, members, shifts, avail, rules, onClose, onSaved }) {
   const original = (slot) => {
@@ -240,13 +251,13 @@ function DayEditor({ date, members, shifts, avail, rules, onClose, onSaved }) {
   const statusOf = (id, slot) => {
     const a = availOf(id);
     const r = ruleOf(id);
-    if (a === 'off') return { tone: 'off', label: '✕ 入れない' };
-    if (r && r.kind === 'off') return { tone: 'off', label: '✕ ' + WD[wd] + '曜NG' };
-    if (r && r.kind !== 'off' && (r.slot === slot || r.slot === 'both')) return { tone: 'fixed', label: '固定' };
-    if (a === 'both') return { tone: 'ok', label: '○ 空きあり' };
-    if (a === 'early') return { tone: slot === 'early' ? 'ok' : 'weak', label: '早のみ' };
-    if (a === 'late') return { tone: slot === 'late' ? 'ok' : 'weak', label: '遅のみ' };
-    return { tone: 'none', label: '希望なし' };
+    if (a === 'off') return { tone: 'off', label: '入れない', Ic: IconX };
+    if (r && r.kind === 'off') return { tone: 'off', label: WD[wd] + '曜NG', Ic: IconX };
+    if (r && r.kind !== 'off' && (r.slot === slot || r.slot === 'both')) return { tone: 'fixed', label: '固定', Ic: IconLock };
+    if (a === 'both') return { tone: 'ok', label: '空きあり', Ic: IconCheck };
+    if (a === 'early') return { tone: slot === 'early' ? 'ok' : 'weak', label: '早のみ', Ic: IconSun };
+    if (a === 'late') return { tone: slot === 'late' ? 'ok' : 'weak', label: '遅のみ', Ic: IconMoon };
+    return { tone: 'none', label: '希望なし', Ic: null };
   };
 
   const pick = (slot, id) => {
@@ -295,7 +306,7 @@ function DayEditor({ date, members, shifts, avail, rules, onClose, onSaved }) {
       <div className="modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
         <div className="modal-head">
           <h2>{dateLabel(date)}</h2>
-          <button className="modal-x" onClick={onClose} aria-label="閉じる">✕</button>
+          <button className="modal-x" onClick={onClose} aria-label="閉じる"><IconClose size={17} /></button>
         </div>
 
         <div className="modal-body">
@@ -305,7 +316,7 @@ function DayEditor({ date, members, shifts, avail, rules, onClose, onSaved }) {
             return (
               <div key={slot} className="slot-section">
                 <div className="slot-title">
-                  <span>{SLOT_TITLE[slot]}</span>
+                  <span className="slot-name"><SlotIcon slot={slot} size={17} />{SLOT_NAME[slot]}</span>
                   <span className="slot-current">
                     {cur.member_id ? nameOf(cur.member_id) : '未定'}
                   </span>
@@ -329,7 +340,9 @@ function DayEditor({ date, members, shifts, avail, rules, onClose, onSaved }) {
                       >
                         <span className="pick-name">{mb.name}</span>
                         <span className="pick-tag">
-                          {usedInOther ? SLOT_TITLE[other] + 'に選択中' : st.label}
+                          {usedInOther
+                            ? <><SlotIcon slot={other} size={11} />{SLOT_NAME[other]}に選択中</>
+                            : <>{st.Ic && <st.Ic size={11} />}{st.label}</>}
                         </span>
                       </button>
                     );
@@ -345,7 +358,9 @@ function DayEditor({ date, members, shifts, avail, rules, onClose, onSaved }) {
                     className={'mini lock-toggle' + (cur.locked ? ' on' : '')}
                     onClick={() => toggleLock(slot)}
                   >
-                    {cur.locked ? '🔒 固定中(自動割当で上書きしない)' : '🔓 固定しない'}
+                    {cur.locked
+                      ? <><IconLock size={14} />固定中(自動割当で上書きしない)</>
+                      : <><IconUnlock size={14} />固定しない</>}
                   </button>
                 </div>
               </div>
@@ -405,7 +420,10 @@ function Members() {
       {msg && <div className={'msg ' + msg.t}>{msg.text}</div>}
       <ul className="plain">
         {members.map((mb) => (
-          <li key={mb.id}>{mb.name}<button className="danger" onClick={() => del(mb.id, mb.name)}>削除</button></li>
+          <li key={mb.id}>
+            {mb.name}
+            <button className="danger" onClick={() => del(mb.id, mb.name)}><IconTrash size={14} />削除</button>
+          </li>
         ))}
       </ul>
     </div>
@@ -501,12 +519,13 @@ function Rules() {
                 <li key={r.id}>
                   <span>
                     <span className={'rule-badge ' + (r.kind === 'off' ? 'off' : 'assign')}>
+                      {r.kind === 'off' ? <IconX size={11} /> : <IconCheck size={11} />}
                       {r.kind === 'off' ? '入れない' : '入れる'}
                     </span>
                     {r.members?.name}
                     {r.kind !== 'off' && '(' + SLOT_LABEL[r.slot] + ')'}
                   </span>
-                  <button className="danger" onClick={() => del(r.id)}>削除</button>
+                  <button className="danger" onClick={() => del(r.id)}><IconTrash size={14} />削除</button>
                 </li>
               ))}
             </ul>

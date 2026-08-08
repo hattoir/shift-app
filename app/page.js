@@ -1,6 +1,7 @@
 'use client';
 import { useCallback, useEffect, useState } from 'react';
-import { WD, monthStr, monthDays, dateStr } from '@/lib/calendar';
+import { WD, monthStr, monthDays, dateStr, todayStr } from '@/lib/calendar';
+import { IconSun, IconMoon, IconRefresh, IconArrowLeft, IconArrowRight } from '@/lib/icons';
 import { getJson } from '@/lib/api';
 
 export default function Home() {
@@ -39,6 +40,7 @@ export default function Home() {
     setY(d.getFullYear()); setM(d.getMonth() + 1);
   };
   const find = (date, slot) => shifts.find((s) => s.date === date && s.slot === slot);
+  const today = todayStr();
 
   const filled = shifts.filter((s) => s.member_id).length;
 
@@ -46,14 +48,14 @@ export default function Home() {
     <div>
       <h1>シフト表</h1>
       <div className="month-nav">
-        <button onClick={() => move(-1)}>← 前月</button>
+        <button onClick={() => move(-1)}><IconArrowLeft />前月</button>
         <span className="month-label">{y}年{m}月</span>
-        <button onClick={() => move(1)}>翌月 →</button>
-        <button onClick={load} disabled={loading}>{loading ? '更新中...' : '🔄 更新'}</button>
+        <button onClick={() => move(1)}>翌月<IconArrowRight /></button>
+        <button onClick={load} disabled={loading}><IconRefresh />{loading ? '更新中...' : '更新'}</button>
       </div>
       {err && <div className="msg err">読み込みエラー: {err}</div>}
-      <div className="legend">
-        🌅 早番 / 🌙 遅番 ・ この月は {filled} 枠が決まっています
+      <div className="legend legend-ic">
+        <IconSun /> 早番 / <IconMoon /> 遅番 ・ この月は {filled} 枠が決まっています
         {updatedAt && ' ・ 最終更新 ' + updatedAt.toLocaleTimeString('ja-JP')}
       </div>
       <div className="cal">
@@ -64,10 +66,15 @@ export default function Home() {
           const wd = new Date(y, m - 1, d).getDay();
           const e = find(date, 'early'), l = find(date, 'late');
           return (
-            <div key={date} className={'cell' + (wd === 0 ? ' sun' : wd === 6 ? ' sat' : '')}>
+            <div key={date} className={'cell' + (wd === 0 ? ' sun' : wd === 6 ? ' sat' : '')
+              + (date === today ? ' today' : '')}>
               <div className="d">{d}</div>
-              <span className={'slot early' + (e?.members?.name ? '' : ' none')}>🌅 {e?.members?.name || '未定'}</span>
-              <span className={'slot late' + (l?.members?.name ? '' : ' none')}>🌙 {l?.members?.name || '未定'}</span>
+              <span className={'slot early' + (e?.members?.name ? '' : ' none')}>
+                <IconSun size={11} /><span className="nm">{e?.members?.name || '未定'}</span>
+              </span>
+              <span className={'slot late' + (l?.members?.name ? '' : ' none')}>
+                <IconMoon size={11} /><span className="nm">{l?.members?.name || '未定'}</span>
+              </span>
             </div>
           );
         })}

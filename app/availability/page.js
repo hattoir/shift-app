@@ -1,11 +1,15 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { WD, monthStr, monthDays, dateStr } from '@/lib/calendar';
+import { WD, monthStr, monthDays, dateStr, todayStr } from '@/lib/calendar';
+import {
+  IconSun, IconMoon, IconCheck, IconX, IconArrowLeft, IconArrowRight,
+  IconChevronRight, IconChevronDown,
+} from '@/lib/icons';
 import { getJson, postJson } from '@/lib/api';
 
 // 日付をタップするたびに、この順番で切り替わる
 const CYCLE = { none: 'both', both: 'early', early: 'late', late: 'off', off: 'none' };
-const MARK = { none: '', both: '○', early: '早', late: '遅', off: '✕' };
+const MARK = { none: null, both: IconCheck, early: IconSun, late: IconMoon, off: IconX };
 
 export default function Availability() {
   const now = new Date();
@@ -72,6 +76,7 @@ export default function Availability() {
   };
 
   const cells = monthDays(y, m);
+  const today = todayStr();
   const weeks = [];
   for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
   const allDays = cells.filter(Boolean);
@@ -102,21 +107,21 @@ export default function Availability() {
         {!members.length && <div className="legend">※ 名前が出ない場合は、管理者がまだメンバーを登録していません</div>}
         <div className="legend"><b>日付をタップするたびに切り替わります</b></div>
         <div className="chips">
-          <span className="chip m-both">○ どちらでもOK</span>
-          <span className="chip m-early">早 早番だけ</span>
-          <span className="chip m-late">遅 遅番だけ</span>
-          <span className="chip m-off">✕ この日は入れない</span>
+          <span className="chip m-both"><IconCheck size={13} />どちらでもOK</span>
+          <span className="chip m-early"><IconSun size={13} />早番だけ</span>
+          <span className="chip m-late"><IconMoon size={13} />遅番だけ</span>
+          <span className="chip m-off"><IconX size={13} />この日は入れない</span>
           <span className="chip m-none">なし(未入力)</span>
         </div>
-        <div className="legend">
-          ✕ を付けた日は、固定ルールがあっても自動割当で入れられません。
+        <div className="legend legend-ic">
+          <IconX size={13} /> を付けた日は、固定ルールがあっても自動割当で入れられません。
         </div>
       </div>
 
       <div className="month-nav">
-        <button onClick={() => move(-1)}>← 前月</button>
+        <button onClick={() => move(-1)}><IconArrowLeft />前月</button>
         <span className="month-label">{y}年{m}月</span>
-        <button onClick={() => move(1)}>翌月 →</button>
+        <button onClick={() => move(1)}>翌月<IconArrowRight /></button>
       </div>
 
       <div className="cal">
@@ -126,11 +131,13 @@ export default function Availability() {
           const date = dateStr(y, m, d);
           const wd = new Date(y, m - 1, d).getDay();
           const mk = marks[date] || 'none';
+          const Ic = MARK[mk];
           return (
             <div key={date} onClick={() => toggle(date)}
-              className={'cell avail-cell mark-' + mk + (wd === 0 ? ' sun' : wd === 6 ? ' sat' : '')}>
+              className={'cell avail-cell mark-' + mk + (wd === 0 ? ' sun' : wd === 6 ? ' sat' : '')
+                + (date === today ? ' today' : '')}>
               <div className="d">{d}</div>
-              <div className="mark">{MARK[mk]}</div>
+              <div className="mark">{Ic && <Ic size={21} />}</div>
             </div>
           );
         })}
@@ -138,14 +145,19 @@ export default function Availability() {
 
       <div className="card" style={{ marginTop: 16 }}>
         <button className="link-btn" onClick={() => setBulk(!bulk)}>
-          {bulk ? '▼' : '▶'} まとめて入力する
+          {bulk ? <IconChevronDown size={13} /> : <IconChevronRight size={13} />}
+          まとめて入力する
         </button>
         {bulk && (
           <div style={{ marginTop: 12 }}>
             <div className="legend">この月ぜんぶ</div>
             <div className="chips">
-              <button className="mini" onClick={() => setMany(allDays, 'both')}>ぜんぶ ○</button>
-              <button className="mini danger-btn" onClick={() => setMany(allDays, 'off')}>ぜんぶ ✕</button>
+              <button className="mini" onClick={() => setMany(allDays, 'both')}>
+                <IconCheck size={14} />ぜんぶOK
+              </button>
+              <button className="mini danger-btn" onClick={() => setMany(allDays, 'off')}>
+                <IconX size={14} />ぜんぶ入れない
+              </button>
               <button className="mini" onClick={() => setMany(allDays, 'none')}>ぜんぶ消す</button>
             </div>
             <div className="legend" style={{ marginTop: 12 }}>週ごと</div>
@@ -155,8 +167,10 @@ export default function Availability() {
               return (
                 <div key={i} className="chips" style={{ marginBottom: 6 }}>
                   <span className="week-label">{days[0]}日〜{days[days.length - 1]}日</span>
-                  <button className="mini" onClick={() => setMany(days, 'both')}>○</button>
-                  <button className="mini danger-btn" onClick={() => setMany(days, 'off')}>✕</button>
+                  <button className="mini icon-only" onClick={() => setMany(days, 'both')}
+                    aria-label="この週はどちらでもOK"><IconCheck size={15} /></button>
+                  <button className="mini danger-btn icon-only" onClick={() => setMany(days, 'off')}
+                    aria-label="この週は入れない"><IconX size={15} /></button>
                   <button className="mini" onClick={() => setMany(days, 'none')}>消す</button>
                 </div>
               );
