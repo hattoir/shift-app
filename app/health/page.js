@@ -42,6 +42,17 @@ async function check() {
     }
   }
 
+  // 2-b) 追加機能のSQLが実行済みか(fixed_rules.kind 列があるかで判定)
+  try {
+    const { error } = await s.from('fixed_rules').select('kind', { count: 'exact', head: true });
+    results.push([
+      '追加SQL (migrations/001)',
+      error ? '未実行 → SupabaseのSQL Editorで supabase/migrations/001_add_off_and_rule_kind.sql を実行してください' : 'OK 実行済み',
+    ]);
+  } catch (e) {
+    results.push(['追加SQL (migrations/001)', '確認できませんでした: ' + String(e.message)]);
+  }
+
   // 3) シフトが「どの月」に入っているかの内訳
   const months = [];
   const { data: rows, error: rowErr } = await s.from('shifts').select('date, slot, locked, members(name)').order('date');

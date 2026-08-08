@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { WD, monthStr, monthDays, dateStr } from '@/lib/calendar';
 import { getJson } from '@/lib/api';
 
@@ -9,18 +9,38 @@ export default function Home() {
   const [m, setM] = useState(now.getMonth() + 1);
   const [shifts, setShifts] = useState([]);
   const [err, setErr] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [updatedAt, setUpdatedAt] = useState(null);
 
-  useEffect(() => {
-    getJson('/api/shifts?month=' + monthStr(y, m)).then(({ data, error }) => {
-      setErr(error); setShifts(Array.isArray(data) ? data : []);
-    });
+  const load = useCallback(async () => {
+    setLoading(true);
+    const { data, error } = await getJson('/api/shifts?month=' + monthStr(y, m));
+    setErr(error);
+    setShifts(Array.isArray(data) ? data : []);
+    setUpdatedAt(new Date());
+    setLoading(false);
   }, [y, m]);
+
+  useEffect(() => { load(); }, [load]);
+
+  // 別のタブや画面から戻ってきたときに自動で最新を取り直す
+  useEffect(() => {
+    const onFocus = () => { if (document.visibilityState === 'visible') load(); };
+    document.addEventListener('visibilitychange', onFocus);
+    window.addEventListener('focus', onFocus);
+    return () => {
+      document.removeEventListener('visibilitychange', onFocus);
+      window.removeEventListener('focus', onFocus);
+    };
+  }, [load]);
 
   const move = (diff) => {
     const d = new Date(y, m - 1 + diff, 1);
     setY(d.getFullYear()); setM(d.getMonth() + 1);
   };
   const find = (date, slot) => shifts.find((s) => s.date === date && s.slot === slot);
+
+  const filled = shifts.filter((s) => s.member_id).length;
 
   return (
     <div>
@@ -29,9 +49,13 @@ export default function Home() {
         <button onClick={() => move(-1)}>← 前月</button>
         <span className="month-label">{y}年{m}月</span>
         <button onClick={() => move(1)}>翌月 →</button>
+        <button onClick={load} disabled={loading}>{loading ? '更新中...' : '🔄 更新'}</button>
       </div>
       {err && <div className="msg err">読み込みエラー: {err}</div>}
-      <div className="legend">🌅 早番 / 🌙 遅番</div>
+      <div className="legend">
+        🌅 早番 / 🌙 遅番 ・ この月は {filled} 枠が決まっています
+        {updatedAt && ' ・ 最終更新 ' + updatedAt.toLocaleTimeString('ja-JP')}
+      </div>
       <div className="cal">
         {WD.map((w) => <div key={w} className="cal-head">{w}</div>)}
         {monthDays(y, m).map((d, i) => {
@@ -42,8 +66,8 @@ export default function Home() {
           return (
             <div key={date} className={'cell' + (wd === 0 ? ' sun' : wd === 6 ? ' sat' : '')}>
               <div className="d">{d}</div>
-              <span className={'slot early' + (e ? '' : ' none')}>🌅 {e?.members?.name || '未定'}</span>
-              <span className={'slot late' + (l ? '' : ' none')}>🌙 {l?.members?.name || '未定'}</span>
+              <span className={'slot early' + (e?.members?.name ? '' : ' none')}>🌅 {e?.members?.name || '未定'}</span>
+              <span className={'slot late' + (l?.members?.name ? '' : ' none')}>🌙 {l?.members?.name || '未定'}</span>
             </div>
           );
         })}

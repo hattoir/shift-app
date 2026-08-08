@@ -7,8 +7,8 @@ body { font-family: 'Hiragino Sans', 'Yu Gothic', sans-serif; background: #f5f6f
 .main { max-width: 900px; margin: 0 auto; padding: 20px 12px 60px; }
 h1 { font-size: 20px; margin-bottom: 12px; }
 h2 { font-size: 16px; margin: 20px 0 8px; }
-.month-nav { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
-.month-nav button { padding: 6px 14px; border: 1px solid #dfe6e9; background: #fff; border-radius: 6px; cursor: pointer; }
+.month-nav { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+.month-nav button { padding: 8px 14px; border: 1px solid #dfe6e9; background: #fff; border-radius: 6px; cursor: pointer; min-height: 40px; }
 .month-label { font-size: 18px; font-weight: bold; min-width: 130px; text-align: center; }
 .cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
 .cal-head { text-align: center; font-size: 12px; color: #636e72; padding: 4px 0; }
@@ -19,23 +19,114 @@ h2 { font-size: 16px; margin: 20px 0 8px; }
 .cell.sat .d { color: #0984e3; }
 .slot { display: block; border-radius: 4px; padding: 1px 4px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .slot.early { background: #ffeaa7; }
-.slot.late { background: #a29bfe33; background-color: #dfe6ff; }
-.slot.none { color: #b2bec3; }
-.pick { width: 100%; margin-top: 2px; font-size: 11px; }
-button.primary { background: #0984e3; color: #fff; border: none; padding: 10px 20px; border-radius: 8px; font-size: 15px; cursor: pointer; }
+.slot.late { background: #dfe6ff; }
+.slot.none { color: #b2bec3; background: #f7f8fa; }
+button.primary { background: #0984e3; color: #fff; border: none; padding: 12px 20px; border-radius: 8px; font-size: 15px; cursor: pointer; min-height: 44px; }
 button.primary:disabled { background: #b2bec3; }
-button.danger { background: none; border: none; color: #d63031; cursor: pointer; }
+button.danger { background: none; border: none; color: #d63031; cursor: pointer; padding: 8px; }
 .card { background: #fff; border: 1px solid #e1e4e8; border-radius: 10px; padding: 16px; margin-bottom: 16px; }
-select, input[type=text], input[type=password] { padding: 8px; border: 1px solid #dfe6e9; border-radius: 6px; font-size: 15px; }
+select, input[type=text], input[type=password] { padding: 10px 8px; border: 1px solid #dfe6e9; border-radius: 6px; font-size: 15px; min-height: 44px; }
 .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
-.avail-cell { cursor: pointer; user-select: none; text-align: center; }
-.avail-cell .mark { font-size: 18px; margin-top: 4px; }
-.legend { font-size: 12px; color: #636e72; margin: 8px 0; }
+.legend { font-size: 12px; color: #636e72; margin: 8px 0; line-height: 1.6; }
 .tabs { display: flex; gap: 8px; margin-bottom: 16px; }
-.tabs button { padding: 8px 16px; border: 1px solid #dfe6e9; background: #fff; border-radius: 8px; cursor: pointer; }
+.tabs button { padding: 10px 16px; border: 1px solid #dfe6e9; background: #fff; border-radius: 8px; cursor: pointer; min-height: 44px; }
 .tabs button.active { background: #0984e3; color: #fff; border-color: #0984e3; }
-.msg { padding: 8px 12px; border-radius: 6px; margin: 8px 0; font-size: 14px; }
+.msg { padding: 8px 12px; border-radius: 6px; margin: 8px 0; font-size: 14px; line-height: 1.6; }
 .msg.ok { background: #d1f2eb; color: #0b6e4f; }
 .msg.err { background: #fde2e2; color: #c0392b; }
 ul.plain { list-style: none; }
-ul.plain li { display: flex; justify-content: space-between; align-items: center; padding: 8px 4px; border-bottom: 1px solid #f0f0f0; }
+ul.plain li { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 4px; border-bottom: 1px solid #f0f0f0; }
+ul.plain.small li { font-size: 12px; padding: 6px 4px; }
+
+/* ---- 希望日入力 ---- */
+.avail-cell { cursor: pointer; user-select: none; text-align: center; min-height: 62px; }
+.avail-cell .mark { font-size: 22px; margin-top: 2px; font-weight: bold; }
+.avail-cell.mark-both { background: #eafaf1; }
+.avail-cell.mark-both .mark { color: #0b6e4f; }
+.avail-cell.mark-early { background: #fff8e1; }
+.avail-cell.mark-early .mark { color: #b7791f; }
+.avail-cell.mark-late { background: #eef1ff; }
+.avail-cell.mark-late .mark { color: #3b4cca; }
+.avail-cell.mark-off { background: #fde2e2; border-color: #f0a6a6; }
+.avail-cell.mark-off .mark { color: #c0392b; }
+
+.chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.chip { font-size: 12px; padding: 4px 8px; border-radius: 999px; border: 1px solid #e1e4e8; }
+.chip.m-both { background: #eafaf1; color: #0b6e4f; }
+.chip.m-early { background: #fff8e1; color: #b7791f; }
+.chip.m-late { background: #eef1ff; color: #3b4cca; }
+.chip.m-off { background: #fde2e2; color: #c0392b; }
+.chip.m-none { background: #f5f6fa; color: #636e72; }
+.week-label { font-size: 12px; color: #636e72; min-width: 92px; }
+
+button.mini { padding: 8px 12px; border: 1px solid #dfe6e9; background: #fff; border-radius: 8px; cursor: pointer; font-size: 13px; min-height: 40px; }
+button.mini.danger-btn { border-color: #f0a6a6; color: #c0392b; }
+button.link-btn { background: none; border: none; color: #0984e3; cursor: pointer; font-size: 14px; padding: 4px 0; text-align: left; }
+
+/* ---- 管理画面: 日付セル ---- */
+.tap-cell { cursor: pointer; user-select: none; }
+.tap-cell:hover { border-color: #0984e3; }
+
+/* ---- 1日分の編集ダイアログ ---- */
+.modal-back {
+  position: fixed; inset: 0; background: rgba(0, 0, 0, .45);
+  display: flex; align-items: flex-end; justify-content: center; z-index: 50;
+}
+.modal {
+  background: #fff; width: 100%; max-width: 520px; max-height: 92vh;
+  border-radius: 16px 16px 0 0; display: flex; flex-direction: column;
+}
+@media (min-width: 600px) {
+  .modal-back { align-items: center; }
+  .modal { border-radius: 16px; }
+}
+.modal-head {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 14px 16px; border-bottom: 1px solid #e1e4e8;
+}
+.modal-head h2 { margin: 0; font-size: 18px; }
+.modal-x { background: none; border: none; font-size: 20px; cursor: pointer; color: #636e72; min-width: 44px; min-height: 44px; }
+.modal-body { padding: 12px 16px; overflow-y: auto; flex: 1; }
+.modal-foot {
+  display: flex; gap: 8px; justify-content: flex-end;
+  padding: 12px 16px; border-top: 1px solid #e1e4e8;
+}
+
+.slot-section { margin-bottom: 20px; }
+.slot-title {
+  display: flex; justify-content: space-between; align-items: baseline;
+  font-weight: bold; font-size: 15px; margin-bottom: 8px;
+}
+.slot-current { font-size: 14px; color: #0984e3; }
+
+.pick-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+@media (max-width: 380px) { .pick-grid { grid-template-columns: 1fr; } }
+
+.pick-btn {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+  min-height: 52px; padding: 8px 10px; border-radius: 10px; cursor: pointer;
+  border: 2px solid #e1e4e8; background: #fff; text-align: left; width: 100%;
+}
+.pick-name { font-size: 15px; font-weight: bold; }
+.pick-tag { font-size: 11px; color: #636e72; }
+.pick-btn.tone-ok { border-color: #55efc4; background: #f2fdf8; }
+.pick-btn.tone-fixed { border-color: #74b9ff; background: #f1f8ff; }
+.pick-btn.tone-fixed .pick-tag { color: #0652dd; font-weight: bold; }
+.pick-btn.tone-off { border-color: #f0a6a6; background: #fdf1f1; }
+.pick-btn.tone-off .pick-tag { color: #c0392b; font-weight: bold; }
+.pick-btn.tone-weak { background: #fafbfc; }
+.pick-btn.tone-none { background: #f5f6fa; color: #b2bec3; }
+.pick-btn.tone-none .pick-tag { color: #b2bec3; }
+.pick-btn.selected { border-color: #0984e3; background: #0984e3; color: #fff; box-shadow: 0 0 0 3px #0984e355; }
+.pick-btn.selected .pick-tag { color: #eaf4ff; }
+.pick-btn:disabled { opacity: .45; cursor: not-allowed; }
+
+.slot-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.lock-toggle.on { background: #fff8e1; border-color: #f0c674; color: #7a5b00; font-weight: bold; }
+
+/* ---- 固定ルール ---- */
+.rule-group { margin-top: 14px; }
+.rule-head { font-size: 14px; color: #2d3436; padding-bottom: 4px; border-bottom: 2px solid #dfe6e9; }
+.rule-badge { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 999px; margin-right: 8px; }
+.rule-badge.assign { background: #eafaf1; color: #0b6e4f; }
+.rule-badge.off { background: #fde2e2; color: #c0392b; }
